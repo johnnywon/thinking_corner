@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "FactBar — a tiny terminal-style ticker that types a fresh fact in the corner of your app.",
+  "description": "One fact at a time, typed live in the corner of your app.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

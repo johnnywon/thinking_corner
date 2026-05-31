@@ -1,17 +1,13 @@
-import FactBar from "./FactBar.jsx";
+import ThinkingCorner from "./ThinkingCorner.jsx";
 
 export default function App() {
   return (
     <main className="page">
       <section className="hero">
-        <span className="kicker">thinking_corner</span>
-        <h1>FactBar</h1>
-        <p>
-          A tiny terminal-style ticker that lives in the corner of your app and
-          types a fresh fact, one character at a time. Tap it for another.
-        </p>
+        <h1>thinking_corner</h1>
+        <p className="tagline">One fact at a time.</p>
       </section>
-      <FactBar />
+      <ThinkingCorner />
     </main>
   );
 }

@@ -43,7 +43,7 @@ const PUNCT_PAUSE_MS = 140; // extra beat after . , ? ! ; :
 const SPIN = ["|", "/", "-", "\\"]; // classic terminal spinner frames
 const SPIN_MS = 110; // per frame
 
-export default function FactBar() {
+export default function ThinkingCorner() {
   const [fact, setFact] = useState("");
   const [typed, setTyped] = useState("");
   const [phase, setPhase] = useState("idle"); // idle | exiting | typing
@@ -122,12 +122,12 @@ export default function FactBar() {
   return (
     <>
       <style>{`
-        @keyframes fb-rise { from{transform:translate3d(0,120%,0);opacity:0} to{transform:none;opacity:1} }
-        @keyframes fb-out  { from{transform:none;opacity:1} to{transform:translate3d(0,150%,0);opacity:0} }
-        @keyframes fb-in   { from{transform:translate3d(0,150%,0);opacity:0} to{transform:none;opacity:1} }
-        @keyframes fb-flip { from{transform:perspective(220px) rotateX(-90deg);opacity:0} to{transform:perspective(220px) rotateX(0);opacity:1} }
+        @keyframes tc-rise { from{transform:translate3d(0,120%,0);opacity:0} to{transform:none;opacity:1} }
+        @keyframes tc-out  { from{transform:none;opacity:1} to{transform:translate3d(0,150%,0);opacity:0} }
+        @keyframes tc-in   { from{transform:translate3d(0,150%,0);opacity:0} to{transform:none;opacity:1} }
+        @keyframes tc-flip { from{transform:perspective(220px) rotateX(-90deg);opacity:0} to{transform:perspective(220px) rotateX(0);opacity:1} }
 
-        .fb-shell {
+        .tc-shell {
           position:fixed; right:0; bottom:0; z-index:9999;
           box-sizing:border-box; display:inline-flex; align-items:center;
           max-width:min(420px,100vw); padding:7px 10px;
@@ -137,27 +137,27 @@ export default function FactBar() {
           box-shadow:0 10px 30px -8px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.4);
           cursor:pointer; user-select:none; overflow:hidden;
           transition:width .18s cubic-bezier(.33,1,.68,1), border-color .25s, background .25s;
-          animation:fb-rise .5s cubic-bezier(.16,1,.3,1) both;
+          animation:tc-rise .5s cubic-bezier(.16,1,.3,1) both;
           will-change:transform, opacity;
         }
-        .fb-shell.snap { transition:border-color .25s, background .25s; } /* width snaps per char while typing */
-        .fb-shell:hover { border-color:rgba(255,255,255,.18); background:#141416; }
+        .tc-shell.snap { transition:border-color .25s, background .25s; } /* width snaps per char while typing */
+        .tc-shell:hover { border-color:rgba(255,255,255,.18); background:#141416; }
 
-        .fb-row { display:inline-flex; align-items:center; white-space:nowrap; }
-        .fb-text { display:inline-block; white-space:nowrap; }
-        .fb-text.out { animation:fb-out .3s cubic-bezier(.5,0,.85,.3) both; }
-        .fb-text.in  { animation:fb-in .42s cubic-bezier(.16,1,.3,1) both; }
+        .tc-row { display:inline-flex; align-items:center; white-space:nowrap; }
+        .tc-text { display:inline-block; white-space:nowrap; }
+        .tc-text.out { animation:tc-out .3s cubic-bezier(.5,0,.85,.3) both; }
+        .tc-text.in  { animation:tc-in .42s cubic-bezier(.16,1,.3,1) both; }
 
-        .fb-caret { display:inline-block; width:1ch; margin-right:5px; text-align:center; font-weight:600; }
-        .fb-caret.spin { color:#a1a1aa; }
-        .fb-caret.done { color:#f4f4f5; animation:fb-flip .42s cubic-bezier(.34,1.56,.64,1) both; }
+        .tc-caret { display:inline-block; width:1ch; margin-right:5px; text-align:center; font-weight:600; }
+        .tc-caret.spin { color:#a1a1aa; }
+        .tc-caret.done { color:#f4f4f5; animation:tc-flip .42s cubic-bezier(.34,1.56,.64,1) both; }
       `}</style>
 
       <div
-        className={`fb-shell ${phase === "typing" ? "snap" : ""}`}
+        className={`tc-shell ${phase === "typing" ? "snap" : ""}`}
         style={{ width: `calc(${typed.length + 1}ch + 25px)` }}
         onAnimationEnd={(e) => {
-          if (e.animationName === "fb-rise") {
+          if (e.animationName === "tc-rise") {
             e.currentTarget.style.willChange = "auto"; // drop it once landed
             setEntered(true);
           }
@@ -165,15 +165,15 @@ export default function FactBar() {
         onClick={loadNext}
         title="Tap for another fact"
       >
-        <span className="fb-row">
+        <span className="tc-row">
           <span
             key={phase === "idle" ? "done" : "busy"}
-            className={`fb-caret ${phase === "idle" ? "done" : "spin"}`}
+            className={`tc-caret ${phase === "idle" ? "done" : "spin"}`}
           >
             {phase === "idle" ? ">" : SPIN[frame % SPIN.length]}
           </span>
           <span
-            className={`fb-text ${phase === "exiting" ? "out" : phase === "typing" ? "in" : ""}`}
+            className={`tc-text ${phase === "exiting" ? "out" : phase === "typing" ? "in" : ""}`}
           >
             {typed}
           </span>
