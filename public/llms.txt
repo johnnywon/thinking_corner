@@ -2,7 +2,7 @@
 
 > A React component that shows one line of status in a corner of the page: what an AI agent or background job is doing, with a spinner while busy and the elapsed time. MIT. Peer dependency: react >= 18. No other dependencies. Types included.
 
-Install: `npm install thinking-corner`
+Install: `npm install https://github.com/johnnywon/thinking_corner/releases/download/v0.1.0/thinking-corner-0.1.0.tgz` (not on the npm registry yet; the tarball installs as `thinking-corner`)
 Or with shadcn: `npx shadcn@latest add https://johnnywon.github.io/thinking_corner/r/thinking-corner.json`
 
 ## Exports

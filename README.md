@@ -10,15 +10,20 @@ in progress, and the elapsed time counts up.
 
 ## Install
 
-```bash
-npm install thinking-corner
-```
-
-Or copy the source into your project with the shadcn CLI:
+Copy the source into your project with the shadcn CLI:
 
 ```bash
 npx shadcn@latest add https://johnnywon.github.io/thinking_corner/r/thinking-corner.json
 ```
+
+Or install the package from the GitHub release:
+
+```bash
+npm install https://github.com/johnnywon/thinking_corner/releases/download/v0.1.0/thinking-corner-0.1.0.tgz
+```
+
+The package is not on the npm registry yet. The release tarball installs as
+`thinking-corner`, so the imports below work the same way.
 
 ## Show an AI SDK agent's progress
 
@@ -209,7 +214,7 @@ component. It renders on the server and starts animating after hydration.
 
 ## For AI coding agents
 
-Install with `npm install thinking-corner`. Default export `ThinkingCorner`;
+Install with `npm install https://github.com/johnnywon/thinking_corner/releases/download/v0.1.0/thinking-corner-0.1.0.tgz` (the package is not on the npm registry yet), or with `npx shadcn@latest add https://johnnywon.github.io/thinking_corner/r/thinking-corner.json`. Default export `ThinkingCorner`;
 named exports `ThinkingCornerProvider`, `useCorner`, `useThinkingCorner`,
 `formatElapsed`, `DEFAULT_TIMING`. `statusFromChat` is in
 `thinking-corner/ai-sdk`. Types are included. A plain-text summary is at
