@@ -13,6 +13,7 @@ export const DEFAULT_LABELS = {
 };
 
 const isTool = (part) => part.type === "dynamic-tool" || part.type.startsWith("tool-");
+const FAILED = new Set(["output-error", "output-denied"]);
 
 // One status line for a message part, or null if the part has nothing to show.
 export function describePart(part, labels = DEFAULT_LABELS) {
@@ -41,16 +42,24 @@ export function describePart(part, labels = DEFAULT_LABELS) {
 }
 
 // `status` is useChat's 'submitted' | 'streaming' | 'ready' | 'error'.
+// Returns { status, busy, tone }; tone is "error" for a failed or denied tool
+// call and for a failed request.
 export function statusFromChat(messages, status, customLabels) {
   const labels = { ...DEFAULT_LABELS, ...customLabels };
-  if (status === "error") return { status: labels.error, busy: false };
-  if (status === "ready") return { status: messages.length ? labels.done : "", busy: false };
+  if (status === "error") return { status: labels.error, busy: false, tone: "error" };
+  if (status === "ready") {
+    return { status: messages.length ? labels.done : "", busy: false, tone: "default" };
+  }
   const last = messages[messages.length - 1];
   if (status === "streaming" && last?.role === "assistant") {
     for (let i = last.parts.length - 1; i >= 0; i--) {
-      const line = describePart(last.parts[i], labels);
-      if (line) return { status: line, busy: true };
+      const part = last.parts[i];
+      const line = describePart(part, labels);
+      if (line) {
+        const failed = isTool(part) && FAILED.has(part.state);
+        return { status: line, busy: true, tone: failed ? "error" : "default" };
+      }
     }
   }
-  return { status: labels.thinking, busy: true };
+  return { status: labels.thinking, busy: true, tone: "default" };
 }

@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from "react";
 
-// Two modes:
+// Three ways to drive it:
 //  - controlled: pass `status` (and `busy`) and the corner types each new line.
+//  - provider:   wrap the app in <ThinkingCornerProvider> and start jobs from
+//                any component with useCorner().
 //  - source:     omit `status`; it fetches a line from `source` every `interval`
 //                ms, falling back to the mock facts below.
 
@@ -35,6 +37,7 @@ const THEMES = {
     "--tc-muted": "#a1a1aa",
     "--tc-border": "rgba(255,255,255,.08)",
     "--tc-border-hover": "rgba(255,255,255,.18)",
+    "--tc-error": "#f87171",
   },
   light: {
     "--tc-bg": "#ffffff",
@@ -43,6 +46,7 @@ const THEMES = {
     "--tc-muted": "#71717a",
     "--tc-border": "rgba(0,0,0,.1)",
     "--tc-border-hover": "rgba(0,0,0,.2)",
+    "--tc-error": "#dc2626",
   },
 };
 
@@ -104,17 +108,116 @@ function useReducedMotion() {
   return reduced;
 }
 
-// Drive the corner from code: push() a new line while work runs, done() when
-// it ends. Spread `props` onto <ThinkingCorner />.
+// 4s, 59s, 1m 05s
+export function formatElapsed(ms) {
+  const s = Math.floor(ms / 1000);
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
+}
+
+// when the current run started and ended, tracked from `busy` flipping
+function useRunClock(busy) {
+  const [clock, setClock] = useState({ start: null, end: null });
+  useEffect(() => {
+    const now = Date.now();
+    setClock((c) => {
+      const running = c.start != null && c.end == null;
+      if (busy) return running ? c : { start: now, end: null };
+      return running ? { ...c, end: now } : c;
+    });
+  }, [busy]);
+  return clock;
+}
+
+// Drive the corner from code: push() a new line while work runs, done() or
+// fail() when it ends. Spread `props` onto <ThinkingCorner />.
 export function useThinkingCorner(initial = "") {
-  const [state, setState] = useState({ status: initial, busy: false });
-  const push = useCallback((status) => setState({ status, busy: true }), []);
+  const [state, setState] = useState({ status: initial, busy: false, tone: "default" });
+  const push = useCallback((status) => setState({ status, busy: true, tone: "default" }), []);
   const done = useCallback(
-    (status) => setState((s) => ({ status: status ?? s.status, busy: false })),
+    (status) => setState((s) => ({ status: status ?? s.status, busy: false, tone: "default" })),
     [],
   );
-  const reset = useCallback(() => setState({ status: "", busy: false }), []);
-  return { ...state, push, done, reset, props: state };
+  const fail = useCallback(
+    (status) => setState((s) => ({ status: status ?? s.status, busy: false, tone: "error" })),
+    [],
+  );
+  const reset = useCallback(() => setState({ status: "", busy: false, tone: "default" }), []);
+  return { ...state, push, done, fail, reset, props: state };
+}
+
+const CornerContext = createContext(null);
+
+const latest = (jobs) => jobs.reduce((a, b) => (b.updatedAt >= a.updatedAt ? b : a));
+
+// One corner for the whole app. Any component can start a job with
+// useCorner().start(); the corner shows the most recently updated running job,
+// [n] when more than one is running, and that job's elapsed time. When all
+// jobs have ended it shows the last failure, or else the last job to end.
+export function ThinkingCornerProvider({ children, ...cornerProps }) {
+  const [jobs, setJobs] = useState([]);
+  const nextId = useRef(0);
+
+  const start = useCallback((status = "") => {
+    const id = ++nextId.current;
+    const now = Date.now();
+    // finished jobs are only kept until the next one starts
+    setJobs((js) => [
+      ...js.filter((j) => j.busy),
+      { id, status, busy: true, tone: "default", startedAt: now, endedAt: null, updatedAt: now },
+    ]);
+    const change = (fields) =>
+      setJobs((js) =>
+        js.map((j) => (j.id === id && j.busy ? { ...j, ...fields, updatedAt: Date.now() } : j)),
+      );
+    const finish = (status, tone) =>
+      setJobs((js) =>
+        js.map((j) =>
+          j.id === id && j.busy
+            ? { ...j, status: status ?? j.status, tone, busy: false, endedAt: Date.now(), updatedAt: Date.now() }
+            : j,
+        ),
+      );
+    return {
+      id,
+      update: (status) => change({ status }),
+      done: (status) => finish(status, "default"),
+      fail: (status) => finish(status, "error"),
+    };
+  }, []);
+
+  const value = useMemo(() => ({ start }), [start]);
+  const running = jobs.filter((j) => j.busy);
+  // once all jobs end, a failure wins over a later success so it isn't hidden
+  const failed = jobs.filter((j) => j.tone === "error");
+  const shown = running.length
+    ? latest(running)
+    : failed.length
+      ? latest(failed)
+      : jobs.length
+        ? latest(jobs)
+        : null;
+
+  return (
+    <CornerContext.Provider value={value}>
+      {children}
+      <ThinkingCorner
+        {...cornerProps}
+        status={shown?.status ?? ""}
+        busy={running.length > 0}
+        tone={shown?.tone}
+        startedAt={shown?.startedAt}
+        endedAt={shown?.endedAt}
+        prefix={running.length > 1 ? `[${running.length}]` : undefined}
+      />
+    </CornerContext.Provider>
+  );
+}
+
+// const job = useCorner().start("Exporting…"); job.update("Writing CSV…"); job.done("Export ready.");
+export function useCorner() {
+  const ctx = useContext(CornerContext);
+  if (!ctx) throw new Error("useCorner() needs a <ThinkingCornerProvider> above it");
+  return ctx;
 }
 
 export default function ThinkingCorner({
@@ -128,9 +231,18 @@ export default function ThinkingCorner({
   timing,
   onClick,
   actionLabel = "Show another",
+  tone = "default",
+  prefix,
+  timer = false,
+  startedAt,
+  endedAt,
 }) {
   const controlled = status !== undefined;
   const reduced = useReducedMotion();
+  const clock = useRunClock(controlled && busy);
+  const runStart = startedAt ?? (timer ? clock.start : null);
+  const runEnd = startedAt != null ? endedAt : clock.end;
+  const [now, setNow] = useState(() => Date.now());
   const [line, setLine] = useState(""); // the full line being shown
   const [typed, setTyped] = useState("");
   const [phase, setPhase] = useState("idle"); // idle | exiting | typing
@@ -155,9 +267,16 @@ export default function ThinkingCorner({
     setLine(next); // a new line drives the sequence below
   }, []);
 
-  // no rise animation to wait for when motion is reduced
+  // no rise animation to wait for when motion is reduced. otherwise fall back
+  // to a timer, since a page opened in a background tab may not run the
+  // animation (or fire animationend) until it is shown
   useEffect(() => {
-    if (reduced) setEntered(true);
+    if (reduced) {
+      setEntered(true);
+      return;
+    }
+    const id = setTimeout(() => setEntered(true), 700);
+    return () => clearTimeout(id);
   }, [reduced]);
 
   // controlled: follow `status` once the bar has landed
@@ -240,8 +359,22 @@ export default function ThinkingCorner({
     return () => clearInterval(id);
   }, [spinning, reduced]);
 
+  // tick the elapsed time once a second while the run is open
+  useEffect(() => {
+    if (runStart == null || runEnd != null) return;
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [runStart, runEnd]);
+
+  const elapsed = runStart != null ? formatElapsed(Math.max(0, (runEnd ?? now) - runStart)) : "";
+  // prefix and elapsed sit outside the typed text, each with a 1ch gap. elapsed
+  // reserves 3ch so going from 9s to 10s doesn't squeeze the text.
+  const metaCh = (prefix ? prefix.length + 1 : 0) + (elapsed ? Math.max(elapsed.length, 3) + 1 : 0);
+
   const handleClick = onClick ?? (controlled ? undefined : loadNext);
-  const caret = spinning ? (reduced ? "*" : SPIN[frame % SPIN.length]) : ">";
+  const error = tone === "error";
+  const caret = spinning ? (reduced ? "*" : SPIN[frame % SPIN.length]) : error ? "!" : ">";
 
   return (
     <>
@@ -277,6 +410,11 @@ export default function ThinkingCorner({
         .tc-caret { flex:none; display:inline-block; width:1ch; margin-right:5px; text-align:center; font-weight:600; }
         .tc-caret.spin { color:var(--tc-muted); }
         .tc-caret.done { color:var(--tc-fg); animation:tc-flip .42s cubic-bezier(.34,1.56,.64,1) both; }
+        .tc-caret.error { color:var(--tc-error); }
+
+        .tc-prefix, .tc-elapsed { flex:none; color:var(--tc-muted); }
+        .tc-prefix { margin-right:1ch; }
+        .tc-elapsed { margin-left:1ch; min-width:3ch; text-align:right; font-variant-numeric:tabular-nums; }
 
         @media (prefers-reduced-motion: reduce) {
           .tc-shell, .tc-text, .tc-caret { animation:none !important; transition:none !important; }
@@ -293,8 +431,8 @@ export default function ThinkingCorner({
         style={{
           ...THEMES[theme],
           ...CORNERS[position],
-          // caret + text in ch, plus padding, caret margin and a border
-          width: `calc(${typed.length + 1}ch + 28px)`,
+          // caret + text + prefix/elapsed in ch, plus padding, caret margin and a border
+          width: `calc(${typed.length + 1 + metaCh}ch + 28px)`,
           maxWidth: `min(${maxWidth}px, 100vw)`,
         }}
         onAnimationEnd={(e) => {
@@ -320,12 +458,17 @@ export default function ThinkingCorner({
           : { "aria-hidden": true })}
       >
         <span className="tc-row" aria-hidden="true">
-          <span key={spinning ? "busy" : "done"} className={`tc-caret ${spinning ? "spin" : "done"}`}>
+          <span
+            key={spinning ? "busy" : "done"}
+            className={`tc-caret ${spinning ? "spin" : "done"} ${error ? "error" : ""}`}
+          >
             {caret}
           </span>
+          {prefix && <span className="tc-prefix">{prefix}</span>}
           <span className={`tc-text ${phase === "exiting" ? "out" : phase === "typing" ? "in" : ""}`}>
             {typed}
           </span>
+          {elapsed && <span className="tc-elapsed">{elapsed}</span>}
         </span>
       </div>
     </>

@@ -13,6 +13,8 @@ rotate short facts from an API.
 
 - **One file, no dependencies beyond React.** Inline styles, nothing to configure.
 - **Controlled mode.** Pass `status` and `busy`. The spinner runs while `busy` is true.
+- **App-wide jobs.** `<ThinkingCornerProvider>` gives one corner for the app. Any component can start a job with `useCorner()`, and several can run at once.
+- **Elapsed time and errors.** The bar can show how long a run has taken, and a failed run gets a red `!` caret.
 - **AI SDK helper.** `statusFromChat(messages, status)` turns `useChat` state into props.
 - **Source mode.** Fetches a line from a URL or function every 8 seconds, with built-in mock facts as a fallback.
 - **Accessible.** Each full line is announced once through an `aria-live` region. With `prefers-reduced-motion`, lines appear without typing or sliding.
@@ -23,6 +25,8 @@ rotate short facts from an API.
 npm install
 npm run dev
 ```
+
+Run the tests with `npm test`. They use Node's built-in test runner.
 
 ## Use it in your app
 
@@ -41,14 +45,16 @@ export default function Chat() {
   return (
     <>
       {/* ...your chat UI... */}
-      <ThinkingCorner {...statusFromChat(messages, status)} />
+      <ThinkingCorner {...statusFromChat(messages, status)} timer />
     </>
   );
 }
 ```
 
 `statusFromChat` reads the last assistant message's parts (AI SDK 5 and later)
-and returns `{ status, busy }`:
+and returns `{ status, busy, tone }`. `tone` is `"error"` for a failed or
+denied tool call and for a failed request. `timer` shows the time since the
+run started.
 
 | Chat state                           | Line                       |
 | ------------------------------------ | -------------------------- |
@@ -93,7 +99,49 @@ function Export() {
 ```
 
 `push(text)` shows a line with the spinner running. `done(text?)` stops the
-spinner. `reset()` clears the line.
+spinner. `fail(text?)` stops it with the error tone. `reset()` clears the line.
+
+### One corner for the whole app
+
+Wrap the app once. Any component below it can start a job.
+
+```jsx
+import { ThinkingCornerProvider, useCorner } from "./ThinkingCorner";
+
+export default function Root() {
+  return (
+    <ThinkingCornerProvider position="bottom-right">
+      <App />
+    </ThinkingCornerProvider>
+  );
+}
+
+function ExportButton() {
+  const corner = useCorner();
+
+  async function run() {
+    const job = corner.start("Collecting rows…");
+    try {
+      await collect();
+      job.update("Writing CSV…");
+      await write();
+      job.done("Export ready.");
+    } catch (err) {
+      job.fail(`Export failed: ${err.message}`);
+    }
+  }
+
+  return <button onClick={run}>Export</button>;
+}
+```
+
+The corner shows the running job that changed most recently, with its elapsed
+time. When more than one job is running it shows the count, for example
+`[2] Writing CSV… 4s`. When every job has ended, it shows the last failed job's
+line if any failed, so an error isn't covered by a later success. Otherwise it
+shows the last job to end. A job that is never ended keeps the spinner running, so end every job you
+start, including on errors. The provider passes any other props, such as
+`position` and `theme`, to its corner.
 
 ### Rotate facts from an API
 
@@ -121,6 +169,11 @@ Click the bar, or press Enter on it, for another line.
 | `timing`      | see below        | Partial object that overrides the motion timing.               |
 | `onClick`     | next line        | Click handler. In controlled mode the bar is not clickable without it. |
 | `actionLabel` | `"Show another"` | Accessible name and tooltip when the bar is clickable.         |
+| `tone`        | `"default"`      | `"error"` turns the caret red and ends on `!` instead of `>`.  |
+| `timer`       | `false`          | Shows the time since `busy` turned on. It stops when `busy` turns off. |
+| `startedAt`   | —                | Start time in ms (`Date.now()`) for the elapsed time. Overrides `timer`. |
+| `endedAt`     | —                | End time in ms. Leave it out while the run is going.           |
+| `prefix`      | —                | Short text shown before the line, not typed. The provider uses it for `[2]`. |
 
 ## Timing
 

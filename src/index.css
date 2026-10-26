@@ -135,3 +135,19 @@ body {
   display: block;
   margin: 0 auto;
 }
+
+.jobs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.jobs .replay {
+  margin: 0;
+}
+
+.segmented button:not(:first-child):not(:last-child) {
+  border-radius: 0;
+  border-left: none;
+}

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import ThinkingCorner from "./ThinkingCorner.jsx";
+import { useEffect, useRef, useState } from "react";
+import ThinkingCorner, { ThinkingCornerProvider, useCorner } from "./ThinkingCorner.jsx";
 import { statusFromChat } from "./aiSdk.js";
 import { AGENT_RUN } from "./agentRun.js";
 
@@ -21,6 +21,59 @@ function useReplay(run) {
     return () => clearTimeout(timer);
   }, [run]);
   return AGENT_RUN[step][1];
+}
+
+// Simulated background jobs: [line, ms] steps, then a final done or fail line.
+const JOBS = {
+  export: {
+    label: "Start export",
+    steps: [["Collecting rows…", 1800], ["Writing CSV…", 2200]],
+    end: ["done", "Export ready."],
+  },
+  sync: {
+    label: "Start sync",
+    steps: [["Fetching 3 feeds…", 2600], ["Merging 214 items…", 2400]],
+    end: ["done", "Sync done."],
+  },
+  upload: {
+    label: "Start failing upload",
+    steps: [["Uploading report.pdf…", 2500]],
+    end: ["fail", "Upload failed: file too large."],
+  },
+};
+
+function JobsPanel() {
+  const corner = useCorner();
+  const timers = useRef([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  const run = ({ steps, end }) => {
+    const job = corner.start(steps[0][0]);
+    let at = 0;
+    steps.forEach(([, ms], i) => {
+      at += ms;
+      const next = steps[i + 1];
+      timers.current.push(
+        setTimeout(() => (next ? job.update(next[0]) : job[end[0]](end[1])), at),
+      );
+    });
+  };
+
+  return (
+    <div className="panel">
+      <p className="note">
+        Each button starts a job through <code>useCorner()</code>. Start two at once to see the
+        count.
+      </p>
+      <div className="jobs">
+        {Object.entries(JOBS).map(([key, job]) => (
+          <button key={key} className="replay" onClick={() => run(job)}>
+            {job.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 const describeLast = (messages) => {
@@ -47,6 +100,9 @@ export default function App() {
           <div className="segmented" role="group" aria-label="Mode">
             <button aria-pressed={mode === "agent"} onClick={() => setMode("agent")}>
               Agent status
+            </button>
+            <button aria-pressed={mode === "jobs"} onClick={() => setMode("jobs")}>
+              Jobs
             </button>
             <button aria-pressed={mode === "facts"} onClick={() => setMode("facts")}>
               Facts
@@ -94,6 +150,10 @@ export default function App() {
               Replay run
             </button>
           </div>
+        ) : mode === "jobs" ? (
+          <ThinkingCornerProvider position={position} theme={theme}>
+            <JobsPanel />
+          </ThinkingCornerProvider>
         ) : (
           <div className="panel">
             <p className="note">Shows a new fact every 8 seconds. Click the bar for another.</p>
@@ -102,10 +162,10 @@ export default function App() {
       </section>
 
       {mode === "agent" ? (
-        <ThinkingCorner key="agent" {...corner} position={position} theme={theme} />
-      ) : (
+        <ThinkingCorner key="agent" {...corner} timer position={position} theme={theme} />
+      ) : mode === "facts" ? (
         <ThinkingCorner key="facts" position={position} theme={theme} />
-      )}
+      ) : null}
     </main>
   );
 }
