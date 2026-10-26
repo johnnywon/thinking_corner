@@ -1,6 +1,6 @@
 {
   "name": "thinking-corner",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A status line for the corner of a React app that shows what an AI agent or background job is doing.",
   "type": "module",
   "license": "MIT",
