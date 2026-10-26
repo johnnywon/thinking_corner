@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from "react";
 
 // Three ways to drive it:

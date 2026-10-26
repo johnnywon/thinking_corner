@@ -1,9 +1,9 @@
-// Live AI SDK example (not part of the demo build). Needs `ai`, `@ai-sdk/react`
+// Live AI SDK example (not part of the demo build). Needs `thinking-corner`, `ai`, `@ai-sdk/react`
 // and a chat route at /api/chat that returns `result.toUIMessageStreamResponse()`.
 import { useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import ThinkingCorner from "../src/ThinkingCorner.jsx";
-import { statusFromChat } from "../src/aiSdk.js";
+import ThinkingCorner from "thinking-corner";
+import { statusFromChat } from "thinking-corner/ai-sdk";
 
 export default function Chat() {
   const { messages, status, sendMessage } = useChat();

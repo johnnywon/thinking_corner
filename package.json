@@ -1,21 +1,69 @@
 {
-  "name": "thinking_corner",
-  "private": true,
+  "name": "thinking-corner",
   "version": "0.1.0",
+  "description": "A status line for the corner of a React app that shows what an AI agent or background job is doing.",
   "type": "module",
-  "description": "One fact at a time, typed live in the corner of your app.",
+  "license": "MIT",
+  "author": "Johnny Won (https://github.com/johnnywon)",
+  "homepage": "https://johnnywon.github.io/thinking_corner/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johnnywon/thinking_corner.git"
+  },
+  "bugs": "https://github.com/johnnywon/thinking_corner/issues",
+  "keywords": [
+    "react",
+    "ai",
+    "ai-sdk",
+    "agent",
+    "status",
+    "progress",
+    "spinner",
+    "terminal",
+    "typewriter",
+    "shadcn"
+  ],
+  "sideEffects": false,
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./lib/index.js"
+    },
+    "./ai-sdk": {
+      "types": "./types/ai-sdk.d.ts",
+      "import": "./lib/ai-sdk.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "ai-sdk": [
+        "./types/ai-sdk.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "lib",
+    "types"
+  ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/build-registry.mjs && vite build",
+    "build:lib": "vite build --config vite.lib.config.js",
     "preview": "vite preview",
-    "test": "node --test"
+    "test": "node --test",
+    "prepublishOnly": "npm test && npm run build:lib"
   },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+  "peerDependencies": {
+    "react": ">=18"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "vite": "^5.4.11"
   }
 }

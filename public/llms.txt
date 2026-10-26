@@ -1,0 +1,43 @@
+# thinking-corner
+
+> A React component that shows one line of status in a corner of the page: what an AI agent or background job is doing, with a spinner while busy and the elapsed time. MIT. Peer dependency: react >= 18. No other dependencies. Types included.
+
+Install: `npm install thinking-corner`
+Or with shadcn: `npx shadcn@latest add https://johnnywon.github.io/thinking_corner/r/thinking-corner.json`
+
+## Exports
+
+- `thinking-corner`: default `ThinkingCorner`; named `ThinkingCornerProvider`, `useCorner`, `useThinkingCorner`, `formatElapsed`, `DEFAULT_TIMING`. The module is marked "use client".
+- `thinking-corner/ai-sdk`: `statusFromChat(messages, status, labels?)`, `describePart(part)`, `DEFAULT_LABELS`. Does not import `ai`.
+
+## Vercel AI SDK (useChat)
+
+```jsx
+import ThinkingCorner from "thinking-corner";
+import { statusFromChat } from "thinking-corner/ai-sdk";
+const { messages, status } = useChat();
+<ThinkingCorner {...statusFromChat(messages, status)} timer />
+```
+
+statusFromChat returns `{ status, busy, tone }`. Lines: "Thinking…", "Calling <tool>…", "<tool> done", "<tool> failed" (tone "error"), "Writing…", "Done.", "Something went wrong." (tone "error").
+
+## Background jobs
+
+```jsx
+<ThinkingCornerProvider>{app}</ThinkingCornerProvider>
+// in any component below:
+const job = useCorner().start("Collecting rows…");
+job.update("Writing CSV…");
+job.done("Export ready."); // or job.fail("Export failed.")
+```
+
+Always end a job with done() or fail(), or the spinner keeps running. Several jobs can run at once; the corner shows "[n]" and the latest running job.
+
+## Controlled props
+
+`status`, `busy`, `tone` ("default" | "error"), `timer`, `startedAt`, `endedAt`, `prefix`, `position` ("bottom-right" | "bottom-left" | "top-right" | "top-left"), `theme` ("dark" | "light"), `maxWidth`, `timing`, `onClick`, `actionLabel`. Source mode: `source` (URL or async function), `interval`.
+
+## Docs
+
+- README: https://github.com/johnnywon/thinking_corner
+- Demo: https://johnnywon.github.io/thinking_corner/

@@ -1,120 +1,64 @@
-# thinking_corner
+# thinking-corner
 
-A small terminal-style status line for the corner of a React app. Each new line
-is typed in one character at a time, with a `| / - \` spinner while work runs
-and a `>` prompt when it ends. Use it to show what an AI agent is doing, or to
-rotate short facts from an API.
+A status line for the corner of a React app that shows what your AI agent or
+background job is doing. Each line is typed in, a spinner runs while work is
+in progress, and the elapsed time counts up.
 
-### → [Live demo](https://johnnywon.github.io/thinking_corner/)
+![An agent run in the corner: Thinking, Calling getWeather, getWeather done, Done](https://raw.githubusercontent.com/johnnywon/thinking_corner/main/assets/demo.gif)
 
-![thinking_corner pinned to the corner of a page](https://raw.githubusercontent.com/johnnywon/thinking_corner/main/assets/thinking_corner.png)
+[Live demo](https://johnnywon.github.io/thinking_corner/) · React 18 or later · No other dependencies · MIT
 
-## Highlights
-
-- **One file, no dependencies beyond React.** Inline styles, nothing to configure.
-- **Controlled mode.** Pass `status` and `busy`. The spinner runs while `busy` is true.
-- **App-wide jobs.** `<ThinkingCornerProvider>` gives one corner for the app. Any component can start a job with `useCorner()`, and several can run at once.
-- **Elapsed time and errors.** The bar can show how long a run has taken, and a failed run gets a red `!` caret.
-- **AI SDK helper.** `statusFromChat(messages, status)` turns `useChat` state into props.
-- **Source mode.** Fetches a line from a URL or function every 8 seconds, with built-in mock facts as a fallback.
-- **Accessible.** Each full line is announced once through an `aria-live` region. With `prefers-reduced-motion`, lines appear without typing or sliding.
-
-## Run locally
+## Install
 
 ```bash
-npm install
-npm run dev
+npm install thinking-corner
 ```
 
-Run the tests with `npm test`. They use Node's built-in test runner.
+Or copy the source into your project with the shadcn CLI:
 
-## Use it in your app
+```bash
+npx shadcn@latest add https://johnnywon.github.io/thinking_corner/r/thinking-corner.json
+```
 
-Copy `src/ThinkingCorner.jsx` into your project. Copy `src/aiSdk.js` too if you
-use the AI SDK.
-
-### Show an AI SDK agent's progress
+## Show an AI SDK agent's progress
 
 ```jsx
+"use client";
 import { useChat } from "@ai-sdk/react";
-import ThinkingCorner from "./ThinkingCorner";
-import { statusFromChat } from "./aiSdk";
+import ThinkingCorner from "thinking-corner";
+import { statusFromChat } from "thinking-corner/ai-sdk";
 
 export default function Chat() {
   const { messages, status } = useChat();
   return (
     <>
-      {/* ...your chat UI... */}
+      {/* your chat UI */}
       <ThinkingCorner {...statusFromChat(messages, status)} timer />
     </>
   );
 }
 ```
 
-`statusFromChat` reads the last assistant message's parts (AI SDK 5 and later)
-and returns `{ status, busy, tone }`. `tone` is `"error"` for a failed or
-denied tool call and for a failed request. `timer` shows the time since the
-run started.
+The corner shows `Thinking…`, then `Calling getWeather…` and `getWeather done`
+for each tool call, then `Writing…` and `Done.`. Failed tool calls and failed
+requests turn the caret red.
 
-| Chat state                           | Line                       |
-| ------------------------------------ | -------------------------- |
-| `submitted`, or reasoning            | `Thinking…`                |
-| tool part, `input-*`                 | `Calling getWeather…`      |
-| tool part, `approval-requested`      | `Waiting for approval: …`  |
-| tool part, `output-available`        | `getWeather done`          |
-| tool part, `output-error` / `-denied`| `getWeather failed` / `denied` |
-| text streaming                       | `Writing…`                 |
-| `ready`                              | `Done.`                    |
-| `error`                              | `Something went wrong.`    |
+## Show background jobs from anywhere in the app
 
-A tool part's `title` is used in place of its name when set. Pass a third
-argument to change the fixed lines:
-`statusFromChat(messages, status, { done: "Ready." })`.
-
-See [`examples/ai-sdk-chat.jsx`](examples/ai-sdk-chat.jsx) for a full chat page.
-
-### Drive it from your own code
+Wrap the app once:
 
 ```jsx
-import ThinkingCorner, { useThinkingCorner } from "./ThinkingCorner";
+import { ThinkingCornerProvider } from "thinking-corner";
 
-function Export() {
-  const corner = useThinkingCorner();
-
-  async function run() {
-    corner.push("Collecting rows…");
-    await collect();
-    corner.push("Writing CSV…");
-    await write();
-    corner.done("Export ready.");
-  }
-
-  return (
-    <>
-      <button onClick={run}>Export</button>
-      <ThinkingCorner {...corner.props} />
-    </>
-  );
+export default function Root({ children }) {
+  return <ThinkingCornerProvider>{children}</ThinkingCornerProvider>;
 }
 ```
 
-`push(text)` shows a line with the spinner running. `done(text?)` stops the
-spinner. `fail(text?)` stops it with the error tone. `reset()` clears the line.
-
-### One corner for the whole app
-
-Wrap the app once. Any component below it can start a job.
+Start a job from any component below it:
 
 ```jsx
-import { ThinkingCornerProvider, useCorner } from "./ThinkingCorner";
-
-export default function Root() {
-  return (
-    <ThinkingCornerProvider position="bottom-right">
-      <App />
-    </ThinkingCornerProvider>
-  );
-}
+import { useCorner } from "thinking-corner";
 
 function ExportButton() {
   const corner = useCorner();
@@ -135,49 +79,112 @@ function ExportButton() {
 }
 ```
 
-The corner shows the running job that changed most recently, with its elapsed
-time. When more than one job is running it shows the count, for example
-`[2] Writing CSV… 4s`. When every job has ended, it shows the last failed job's
-line if any failed, so an error isn't covered by a later success. Otherwise it
-shows the last job to end. A job that is never ended keeps the spinner running, so end every job you
-start, including on errors. The provider passes any other props, such as
-`position` and `theme`, to its corner.
+The corner stays visible while the user moves around the app. When several
+jobs run at once it shows the count, for example `[2] Writing CSV… 4s`.
 
-### Rotate facts from an API
+## When to use it
 
-Leave out `status` and set `source`:
+Use thinking-corner for one line of status that stays on screen across the
+page, including work that runs in the background.
 
-```jsx
-<ThinkingCorner source="https://your.api/facts/random" />
-```
+Use [AI Elements](https://elements.ai-sdk.dev/) when you want reasoning, tool
+calls and their inputs and outputs shown inside the chat thread. The two work
+together.
 
-`source` is a URL that returns `{ fact: "..." }` or a raw string, or an async
-function that returns a string. If it fails, the built-in mock facts are shown.
-Click the bar, or press Enter on it, for another line.
+## Limitations
 
-## Props
+- React only. There is no build for other frameworks yet.
+- One corner per page. With the provider, all jobs share it.
+- A job that is never ended keeps the spinner running. End every job you start, including on errors.
+- It shows status from your app. It has no hosted feed or server component.
+- The API may change before 1.0.
+
+## Reference
+
+### Props
 
 | Prop          | Default          | What it does                                                   |
 | ------------- | ---------------- | -------------------------------------------------------------- |
 | `status`      | —                | Line to show. Setting it turns on controlled mode.             |
 | `busy`        | `false`          | Keeps the spinner running after the line is typed.             |
-| `source`      | mock facts       | URL or async function for source mode.                         |
-| `interval`    | `8000`           | Source mode rotation in ms. `0` turns it off.                  |
+| `tone`        | `"default"`      | `"error"` turns the caret red and ends it on `!` instead of `>`. |
+| `timer`       | `false`          | Shows the time since `busy` turned on. It stops when `busy` turns off. |
+| `startedAt`   | —                | Start time in ms (`Date.now()`) for the elapsed time. Overrides `timer`. |
+| `endedAt`     | —                | End time in ms. Leave it out while the run is going.           |
+| `prefix`      | —                | Short text before the line, not typed. The provider uses it for `[2]`. |
 | `position`    | `"bottom-right"` | `bottom-right`, `bottom-left`, `top-right` or `top-left`.      |
 | `theme`       | `"dark"`         | `dark` or `light`.                                             |
 | `maxWidth`    | `420`            | Max width in px. Longer lines end in an ellipsis.              |
 | `timing`      | see below        | Partial object that overrides the motion timing.               |
-| `onClick`     | next line        | Click handler. In controlled mode the bar is not clickable without it. |
+| `onClick`     | —                | Click handler. Makes the bar a button.                         |
 | `actionLabel` | `"Show another"` | Accessible name and tooltip when the bar is clickable.         |
-| `tone`        | `"default"`      | `"error"` turns the caret red and ends on `!` instead of `>`.  |
-| `timer`       | `false`          | Shows the time since `busy` turned on. It stops when `busy` turns off. |
-| `startedAt`   | —                | Start time in ms (`Date.now()`) for the elapsed time. Overrides `timer`. |
-| `endedAt`     | —                | End time in ms. Leave it out while the run is going.           |
-| `prefix`      | —                | Short text shown before the line, not typed. The provider uses it for `[2]`. |
+| `source`      | —                | Source mode. See [Rotate lines from an API](#rotate-lines-from-an-api). |
+| `interval`    | `8000`           | Source mode rotation in ms. `0` turns it off.                  |
 
-## Timing
+`ThinkingCornerProvider` takes the same props except `status`, `busy`, `tone`,
+`timer`, `startedAt`, `endedAt` and `prefix`, which it sets itself.
 
-Pass any of these in `timing`, in ms. Defaults are in `DEFAULT_TIMING`.
+### Provider jobs
+
+`useCorner().start(text)` returns a job with `update(text)`, `done(text?)` and
+`fail(text?)`. The corner shows the running job that changed most recently,
+with its elapsed time. When every job has ended, it shows the last failed job's
+line if any failed, so an error isn't covered by a later success. Otherwise it
+shows the last job to end. `useCorner()` throws if there is no provider above
+it.
+
+### useThinkingCorner
+
+For one component that drives its own corner without a provider:
+
+```jsx
+import ThinkingCorner, { useThinkingCorner } from "thinking-corner";
+
+function Import() {
+  const corner = useThinkingCorner();
+  // corner.push("Reading file…"), corner.done("Imported 120 rows."), corner.fail(), corner.reset()
+  return <ThinkingCorner {...corner.props} timer />;
+}
+```
+
+### statusFromChat
+
+`statusFromChat(messages, status, labels?)` reads the last assistant message's
+parts (AI SDK 5 and later) and returns `{ status, busy, tone }`. It does not
+import the `ai` package.
+
+| Chat state                              | Line                          | Tone    |
+| --------------------------------------- | ----------------------------- | ------- |
+| `submitted`, or a reasoning part        | `Thinking…`                   | default |
+| tool part, `input-*`                    | `Calling getWeather…`         | default |
+| tool part, `approval-requested`         | `Waiting for approval: …`     | default |
+| tool part, `output-available`           | `getWeather done`             | default |
+| tool part, `output-error`               | `getWeather failed`           | error   |
+| tool part, `output-denied`              | `getWeather denied`           | error   |
+| text part while streaming               | `Writing…`                    | default |
+| `ready`                                 | `Done.`                       | default |
+| `error`                                 | `Something went wrong.`       | error   |
+
+A tool part's `title` is used in place of its name when set. The third
+argument changes the fixed lines, for example `{ done: "Ready." }`.
+[`examples/ai-sdk-chat.jsx`](examples/ai-sdk-chat.jsx) is a full chat page.
+
+### Rotate lines from an API
+
+Leave out `status` and set `source` to a URL that returns `{ fact: "..." }` or
+a raw string, or to an async function that returns a string:
+
+```jsx
+<ThinkingCorner source="https://your.api/facts/random" />
+```
+
+A new line loads every 8 seconds, or when the bar is clicked. If the source
+fails, built-in mock facts are shown.
+
+### Timing
+
+Pass any of these in `timing`, in ms. The defaults are exported as
+`DEFAULT_TIMING`.
 
 | Key          | Default | What it does                                 |
 | ------------ | ------- | -------------------------------------------- |
@@ -187,6 +194,36 @@ Pass any of these in `timing`, in ms. Defaults are in `DEFAULT_TIMING`.
 | `exit`       | `300`   | How long the old line takes to slide off     |
 | `hold`       | `220`   | How long the lone spinner sits between lines |
 | `spin`       | `110`   | Spinner frame interval                       |
+
+### Accessibility
+
+Each full line is announced once through a visually hidden `aria-live`
+region, not on every keystroke. When the bar is clickable it is a button that
+works with Enter and Space. With `prefers-reduced-motion`, lines appear without
+typing or sliding and the spinner is a static `*`.
+
+### Next.js and server rendering
+
+The package marks itself `"use client"`, so you can render it from a server
+component. It renders on the server and starts animating after hydration.
+
+## For AI coding agents
+
+Install with `npm install thinking-corner`. Default export `ThinkingCorner`;
+named exports `ThinkingCornerProvider`, `useCorner`, `useThinkingCorner`,
+`formatElapsed`, `DEFAULT_TIMING`. `statusFromChat` is in
+`thinking-corner/ai-sdk`. Types are included. A plain-text summary is at
+[johnnywon.github.io/thinking_corner/llms.txt](https://johnnywon.github.io/thinking_corner/llms.txt).
+
+## Develop
+
+```bash
+npm install
+npm run dev        # demo site
+npm test           # statusFromChat tests, Node's built-in runner
+npm run build:lib  # package into lib/
+npm run build      # demo site and shadcn registry item into dist/
+```
 
 ## License
 
