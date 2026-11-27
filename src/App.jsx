@@ -23,6 +23,10 @@ function useReplay(run) {
   return AGENT_RUN[step][1];
 }
 
+const SHADCN = "npx shadcn@latest add https://johnnywon.github.io/thinking_corner/r/thinking-corner.json";
+const RELEASE =
+  "npm install https://github.com/johnnywon/thinking_corner/releases/download/v0.2.0/thinking-corner-0.2.0.tgz";
+
 // Simulated background jobs: [line, ms] steps, then a final done or fail line.
 const JOBS = {
   export: {
@@ -159,6 +163,21 @@ export default function App() {
             <p className="note">Shows a new fact every 8 seconds. Click the bar for another.</p>
           </div>
         )}
+
+        <div className="panel install">
+          <h2>Install</h2>
+          <p>Copy the source into your project with the shadcn CLI:</p>
+          <pre>
+            <code>{SHADCN}</code>
+          </pre>
+          <p>Or install the package from the GitHub release:</p>
+          <pre>
+            <code>{RELEASE}</code>
+          </pre>
+          <p>
+            <a href="https://github.com/johnnywon/thinking_corner">Code and docs on GitHub</a>
+          </p>
+        </div>
       </section>
 
       {mode === "agent" ? (
