@@ -28,6 +28,8 @@ body {
 }
 
 .hero {
+  min-width: 0;
+  max-width: 100%;
   text-align: center;
 }
 
@@ -150,4 +152,32 @@ body {
 .segmented button:not(:first-child):not(:last-child) {
   border-radius: 0;
   border-left: none;
+}
+
+.install {
+  margin-top: 40px;
+  text-align: left;
+}
+
+.install h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.install p {
+  margin: 12px 0 6px;
+}
+
+.install pre {
+  margin: 0;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #18181b;
+  color: #f4f4f5;
+  border-radius: 6px;
+}
+
+.install a {
+  color: inherit;
 }
