@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/johnnywon/thinking_corner/main/assets/logo-192.png" width="72" height="72" alt="thinking-corner logo">
+
 # thinking-corner
 
 A status line for the corner of a React app that shows what your AI agent or
